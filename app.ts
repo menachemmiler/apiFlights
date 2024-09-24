@@ -1,5 +1,3 @@
-
-
 const BASE_URL: string = "https://66e98a6387e417609449dfc5.mockapi.io/api/";
 const all: HTMLDivElement = document.querySelector(".all")!;
 const reset: HTMLButtonElement = document.querySelector("#reset")!;
@@ -14,7 +12,7 @@ reset.addEventListener("click", () => {
 
 
 
-const createNewPasanger = async (name:string, gender:string, flight_id:string):Promise<void> => {
+const createNewPasanger = async (name:string, gender:string, flight_id:string):Promise<boolean> => {
     try{
         const res:Response = await fetch(BASE_URL + "pasangers", {
             method: "POST",
@@ -35,40 +33,39 @@ const createNewPasanger = async (name:string, gender:string, flight_id:string):P
         console.log(`createNewPasanger= `, post);
         if(res.status == 201){
             alert("the pasanger created");
-            openCreateNewPasangerAlert();
+            return true;
         }
+        return false;
     }catch (err){
         console.log("err= ", err);
+        return false;
     }
 };
 
 btnAddPasangr.addEventListener("click", async (e) => {
-    openCreateNewPasangerAlert();
+    openCreateNewPasangerAlert("");
 });
 
 
 const openCreateNewPasangerAlert = async (pasanger:Pasanger | string = "") => {
+    const backroundDiv:HTMLDivElement = document.createElement("div");
+    backroundDiv.className = "backroundDiv";
     const createForm:HTMLDivElement = document.createElement("div");
     createForm.className = "createForm";
     const closeFormBtn:HTMLButtonElement = document.createElement("button");
     closeFormBtn.className = "closeFormBtn";
     closeFormBtn.textContent = "❌";
     const selectFlight:HTMLSelectElement = document.createElement("select");
-    try{
-        const res:Response = await fetch(BASE_URL + "flights");
-        const json:Flight[] = await res.json();
-        for(let f of json) {
-            const newOpsion:HTMLOptionElement = document.createElement("option");
-            newOpsion.value = f.id;
-            newOpsion.textContent = `form: ${f.from} -> to: ${f.to}`;
-            selectFlight.options.add(newOpsion);
-        };
-        typeof pasanger !== "string" ? selectFlight.selectedIndex = parseInt(pasanger.flight_id) -1 : selectFlight.selectedIndex = 0;
-    }catch (err){
-        console.log(err);
+    const allFlights:Flight[] = await getAllFilghts();
+    for(let f of allFlights) {
+        const newOpsion:HTMLOptionElement = document.createElement("option");
+        newOpsion.value = f.id;
+        newOpsion.textContent = `form: ${f.from} -> to: ${f.to}`;
+        selectFlight.options.add(newOpsion);
     };
+    typeof pasanger !== "string" ? selectFlight.selectedIndex = parseInt(pasanger.flight_id) -1 : selectFlight.selectedIndex = 0;
     closeFormBtn.addEventListener("click", (e) => {
-        createForm.style.display = "none";
+        document.body.removeChild(backroundDiv);
     });
     const inputName:HTMLInputElement = document.createElement("input");
     inputName.placeholder = "insert the pasanger name";
@@ -96,11 +93,10 @@ const openCreateNewPasangerAlert = async (pasanger:Pasanger | string = "") => {
     }
     const btnCreateNewPasanger: HTMLButtonElement = document.createElement("button");
     btnCreateNewPasanger.textContent = "send";
-    btnCreateNewPasanger.addEventListener("click", (e) => {
-    });
-    btnCreateNewPasanger.addEventListener("click", (e) => {
+    btnCreateNewPasanger.addEventListener("click", async (e) => {
         if(typeof pasanger === "string"){
-            createNewPasanger(inputName.value, inputMale.checked ? "male" : "female", selectFlight.value)
+            const chakIfCreated:boolean = await createNewPasanger(inputName.value, inputMale.checked ? "male" : "female", selectFlight.value);
+            if(chakIfCreated) document.body.removeChild(backroundDiv);
         } else{
             const newPasager:Pasanger = {
                 name:inputName.value?? "",
@@ -109,11 +105,21 @@ const openCreateNewPasangerAlert = async (pasanger:Pasanger | string = "") => {
                 createdAt: new Date().toISOString(),
                 agent:"meny",
                 id:pasanger.id};
-            editPasangerById(pasanger.id, newPasager);
+            const chakIfCreated:boolean = await editPasangerById(pasanger.id, newPasager);
+            chakIfCreated ? document.body.removeChild(createForm) : alert("לא ניתן לעדכן את הנוסע");
         }
     });
     createForm.append(closeFormBtn, emptyDiv(), selectFlight, emptyDiv(), maleDiv, femaleDiv, inputName, btnCreateNewPasanger);
-    document.body.appendChild(createForm);
+    backroundDiv.appendChild(createForm);
+    backroundDiv.style.display = "block";
+    backroundDiv.style.position = "fixed";
+    backroundDiv.style.top = "0";
+    backroundDiv.style.left = "0";
+    backroundDiv.style.width = "100%";
+    backroundDiv.style.height = "100%";
+    backroundDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    backroundDiv.style.zIndex = "1";
+    document.body.appendChild(backroundDiv);
 }
 
 
@@ -133,7 +139,7 @@ const getAllPasangers = async (idFligth:string = ""):Promise<void> => {
             const currentFlightsPasangers = json.filter((c) => {return c.flight_id == idFligth});
             if(currentFlightsPasangers.length == 0){
                 alert("אין לך נוסעים בטיסה זו עדיין");
-                return getAllFlights();
+                return fillingMainWithFlights();
             }
             for(const pasanger of currentFlightsPasangers){
                 viewDiv.appendChild(createCardPasanger(pasanger));
@@ -202,7 +208,7 @@ const deletePasangerById = async (id:string):Promise<void> => {
 };
 
 
-const editPasangerById = async (id:string, pasanger:Pasanger):Promise<void> => {
+const editPasangerById = async (id:string, pasanger:Pasanger):Promise<boolean> => {
     try{
         const res:Response = await fetch(`${BASE_URL}pasangers/${id}`, {
             method: "PUT",
@@ -220,8 +226,10 @@ const editPasangerById = async (id:string, pasanger:Pasanger):Promise<void> => {
         const post = await res.json();
         console.log(`post= `, post);
         getAllPasangers();
+        return true;
     }catch (err){
         console.log("err= ", err);
+        return false;
     }
 }
 
@@ -239,20 +247,34 @@ const emptyDiv = ():HTMLDivElement =>{
     return empty;
 }
 
-const getAllFlights = async ():Promise<void> => {
+const getAllFilghts = async ():Promise<Flight[]> => {
     try{
         const res:Response = await fetch(BASE_URL + "flights");
         const json:Flight[] = await res.json();
-        console.log(json);
+        // console.log(json);
+        return json;
+    }catch (err){
+        console.log(err);
+        return [];
+    };
+}
+
+const fillingMainWithFlights = async ():Promise<void> => {
+    try{
+        const allFlights = await getAllFilghts();
+        if(allFlights.length == 0){
+            viewDiv.textContent = "אין נסיעות עדיין";
+            return;
+        }
         viewDiv.textContent = "";
-        for(const flight of json){
+        for(const flight of allFlights){
             viewDiv.appendChild(createCardFlight(flight));
         };
     }catch (err){
         console.log(err);
     };
 };
-getAllFlights();
+fillingMainWithFlights();
 
 
 const createCardFlight = (flight:Flight):HTMLDivElement => {

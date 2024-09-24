@@ -37,41 +37,38 @@ const createNewPasanger = (name, gender, flight_id) => __awaiter(void 0, void 0,
         console.log(`createNewPasanger= `, post);
         if (res.status == 201) {
             alert("the pasanger created");
-            openCreateNewPasangerAlert();
+            return true;
         }
+        return false;
     }
     catch (err) {
         console.log("err= ", err);
+        return false;
     }
 });
 btnAddPasangr.addEventListener("click", (e) => __awaiter(void 0, void 0, void 0, function* () {
-    openCreateNewPasangerAlert();
+    openCreateNewPasangerAlert("");
 }));
 const openCreateNewPasangerAlert = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (pasanger = "") {
+    const backroundDiv = document.createElement("div");
+    backroundDiv.className = "backroundDiv";
     const createForm = document.createElement("div");
     createForm.className = "createForm";
     const closeFormBtn = document.createElement("button");
     closeFormBtn.className = "closeFormBtn";
     closeFormBtn.textContent = "❌";
     const selectFlight = document.createElement("select");
-    try {
-        const res = yield fetch(BASE_URL + "flights");
-        const json = yield res.json();
-        for (let f of json) {
-            const newOpsion = document.createElement("option");
-            newOpsion.value = f.id;
-            newOpsion.textContent = `form: ${f.from} -> to: ${f.to}`;
-            selectFlight.options.add(newOpsion);
-        }
-        ;
-        typeof pasanger !== "string" ? selectFlight.selectedIndex = parseInt(pasanger.flight_id) - 1 : selectFlight.selectedIndex = 0;
-    }
-    catch (err) {
-        console.log(err);
+    const allFlights = yield getAllFilghts();
+    for (let f of allFlights) {
+        const newOpsion = document.createElement("option");
+        newOpsion.value = f.id;
+        newOpsion.textContent = `form: ${f.from} -> to: ${f.to}`;
+        selectFlight.options.add(newOpsion);
     }
     ;
+    typeof pasanger !== "string" ? selectFlight.selectedIndex = parseInt(pasanger.flight_id) - 1 : selectFlight.selectedIndex = 0;
     closeFormBtn.addEventListener("click", (e) => {
-        createForm.style.display = "none";
+        document.body.removeChild(backroundDiv);
     });
     const inputName = document.createElement("input");
     inputName.placeholder = "insert the pasanger name";
@@ -100,12 +97,12 @@ const openCreateNewPasangerAlert = (...args_1) => __awaiter(void 0, [...args_1],
     }
     const btnCreateNewPasanger = document.createElement("button");
     btnCreateNewPasanger.textContent = "send";
-    btnCreateNewPasanger.addEventListener("click", (e) => {
-    });
-    btnCreateNewPasanger.addEventListener("click", (e) => {
+    btnCreateNewPasanger.addEventListener("click", (e) => __awaiter(void 0, void 0, void 0, function* () {
         var _a;
         if (typeof pasanger === "string") {
-            createNewPasanger(inputName.value, inputMale.checked ? "male" : "female", selectFlight.value);
+            const chakIfCreated = yield createNewPasanger(inputName.value, inputMale.checked ? "male" : "female", selectFlight.value);
+            if (chakIfCreated)
+                document.body.removeChild(backroundDiv);
         }
         else {
             const newPasager = {
@@ -116,11 +113,21 @@ const openCreateNewPasangerAlert = (...args_1) => __awaiter(void 0, [...args_1],
                 agent: "meny",
                 id: pasanger.id
             };
-            editPasangerById(pasanger.id, newPasager);
+            const chakIfCreated = yield editPasangerById(pasanger.id, newPasager);
+            chakIfCreated ? document.body.removeChild(createForm) : alert("לא ניתן לעדכן את הנוסע");
         }
-    });
+    }));
     createForm.append(closeFormBtn, emptyDiv(), selectFlight, emptyDiv(), maleDiv, femaleDiv, inputName, btnCreateNewPasanger);
-    document.body.appendChild(createForm);
+    backroundDiv.appendChild(createForm);
+    backroundDiv.style.display = "block";
+    backroundDiv.style.position = "fixed";
+    backroundDiv.style.top = "0";
+    backroundDiv.style.left = "0";
+    backroundDiv.style.width = "100%";
+    backroundDiv.style.height = "100%";
+    backroundDiv.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    backroundDiv.style.zIndex = "1";
+    document.body.appendChild(backroundDiv);
 });
 const getAllPasangers = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (idFligth = "") {
     try {
@@ -139,7 +146,7 @@ const getAllPasangers = (...args_1) => __awaiter(void 0, [...args_1], void 0, fu
             const currentFlightsPasangers = json.filter((c) => { return c.flight_id == idFligth; });
             if (currentFlightsPasangers.length == 0) {
                 alert("אין לך נוסעים בטיסה זו עדיין");
-                return getAllFlights();
+                return fillingMainWithFlights();
             }
             for (const pasanger of currentFlightsPasangers) {
                 viewDiv.appendChild(createCardPasanger(pasanger));
@@ -226,9 +233,11 @@ const editPasangerById = (id, pasanger) => __awaiter(void 0, void 0, void 0, fun
         const post = yield res.json();
         console.log(`post= `, post);
         getAllPasangers();
+        return true;
     }
     catch (err) {
         console.log("err= ", err);
+        return false;
     }
 });
 btnGetAllPasangers.addEventListener("click", (e) => {
@@ -239,13 +248,28 @@ const emptyDiv = () => {
     empty.style.height = "10%";
     return empty;
 };
-const getAllFlights = () => __awaiter(void 0, void 0, void 0, function* () {
+const getAllFilghts = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const res = yield fetch(BASE_URL + "flights");
         const json = yield res.json();
-        console.log(json);
+        // console.log(json);
+        return json;
+    }
+    catch (err) {
+        console.log(err);
+        return [];
+    }
+    ;
+});
+const fillingMainWithFlights = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const allFlights = yield getAllFilghts();
+        if (allFlights.length == 0) {
+            viewDiv.textContent = "אין נסיעות עדיין";
+            return;
+        }
         viewDiv.textContent = "";
-        for (const flight of json) {
+        for (const flight of allFlights) {
             viewDiv.appendChild(createCardFlight(flight));
         }
         ;
@@ -255,7 +279,7 @@ const getAllFlights = () => __awaiter(void 0, void 0, void 0, function* () {
     }
     ;
 });
-getAllFlights();
+fillingMainWithFlights();
 const createCardFlight = (flight) => {
     const cardDiv = document.createElement("div");
     cardDiv.className = "card";
